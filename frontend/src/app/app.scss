@@ -40,3 +40,30 @@ button:disabled {
   opacity: 0.6;
   cursor: wait;
 }
+
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+label,
+input {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.job-id {
+  overflow-wrap: anywhere;
+}
+
+[role='alert'] {
+  color: #a11b1b;
+}
+
+.notice {
+  margin-top: 2rem;
+  color: #4b5563;
+}

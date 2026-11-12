@@ -19,9 +19,13 @@ describe('ApiConfig', () => {
 
   it('loads the deployed API URL and removes a trailing slash', async () => {
     const loaded = config.load();
-    http.expectOne('/config.json').flush({ apiBaseUrl: 'https://backend.example/api/' });
+    http.expectOne('/config.json').flush({
+      apiBaseUrl: 'https://backend.example/api/',
+      auth: { tenantId: 'tenant', clientId: 'spa', apiScope: 'api://api/access_as_user' },
+    });
     await loaded;
     expect(config.apiBaseUrl).toBe('https://backend.example/api');
+    expect(config.auth.clientId).toBe('spa');
   });
 
   it('rejects invalid configuration instead of silently using the local proxy', async () => {

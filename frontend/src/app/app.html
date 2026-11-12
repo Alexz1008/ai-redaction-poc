@@ -1,10 +1,78 @@
 <main>
   <p class="eyebrow">Angular + FastAPI + Azure</p>
-  <h1>AI Redaction</h1>
-  <p>Your application starter is ready. Add your redaction workflow here.</p>
-  <section aria-labelledby="backend-heading">
-    <h2 id="backend-heading">Backend connection</h2>
-    <p role="status">{{ status() }}</p>
-    <button type="button" (click)="checkHealth()" [disabled]="checking()">Check connection</button>
-  </section>
+  <h1>PDF PII Redaction</h1>
+  <p>Upload a PDF, redact personal information with Azure Language, and download the result.</p>
+
+  @if (!auth.configured()) {
+    <p role="status">Configure Entra sign-in in the frontend's config.json to get started.</p>
+  } @else if (!auth.account()) {
+    <button type="button" (click)="signIn()">Sign in with Microsoft</button>
+  } @else {
+    <div class="account">
+      <span>Signed in as {{ auth.account()?.username }}</span>
+      <button type="button" (click)="signOut()">Sign out</button>
+    </div>
+    <section aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Redact a PDF</h2>
+      <p>
+        English PDFs, up to 10 MB. Original and redacted documents are retained in private storage.
+      </p>
+      <label for="pdf">PDF document</label>
+      <input
+        id="pdf"
+        type="file"
+        accept=".pdf,application/pdf"
+        (change)="selectFile($event)"
+        [disabled]="uploading() || polling() || downloading()"
+      />
+      <button
+        type="button"
+        (click)="upload()"
+        [disabled]="!file() || uploading() || polling() || downloading()"
+      >
+        {{ uploading() ? 'Uploading...' : 'Upload and redact' }}
+      </button>
+    </section>
+
+    @if (job(); as currentJob) {
+      <section aria-labelledby="result-heading">
+        <h2 id="result-heading">Result</h2>
+        <p class="job-id">Document ID: {{ currentJob.id }}</p>
+        <div role="status" aria-live="polite">
+          @switch (currentJob.status) {
+            @case ('running') {
+              <p>Azure is processing your PDF. This may take several minutes.</p>
+            }
+            @case ('succeeded') {
+              <p>Your redacted PDF is ready.</p>
+              @if (currentJob.warning_count > 0) {
+                <p>
+                  Azure reported {{ currentJob.warning_count }} processing warning(s). Review the
+                  output carefully.
+                </p>
+              }
+            }
+            @case ('failed') {
+              <p>{{ currentJob.message }}</p>
+            }
+          }
+        </div>
+        @if (currentJob.status === 'running' && !polling()) {
+          <button type="button" (click)="startPolling()">Check status</button>
+        }
+        @if (currentJob.status === 'succeeded') {
+          <button type="button" (click)="download()" [disabled]="downloading()">
+            {{ downloading() ? 'Downloading...' : 'Download redacted PDF' }}
+          </button>
+        }
+      </section>
+    }
+  }
+
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  <p class="notice">
+    Automated redaction can miss sensitive information. Review the downloaded PDF before sharing it.
+  </p>
 </main>

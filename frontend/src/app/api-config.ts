@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 export class ApiConfig {
   private readonly http = inject(HttpClient);
   apiBaseUrl = '/api';
+  auth = { tenantId: '', clientId: '', apiScope: '' };
 
   async load(): Promise<void> {
     const config = await firstValueFrom(this.http.get<unknown>('/config.json'));
@@ -26,5 +27,23 @@ export class ApiConfig {
       }
     }
     this.apiBaseUrl = url;
+    if (
+      !('auth' in config) ||
+      typeof config.auth !== 'object' ||
+      config.auth === null ||
+      !('tenantId' in config.auth) ||
+      typeof config.auth.tenantId !== 'string' ||
+      !('clientId' in config.auth) ||
+      typeof config.auth.clientId !== 'string' ||
+      !('apiScope' in config.auth) ||
+      typeof config.auth.apiScope !== 'string'
+    ) {
+      throw new Error('config.json must define auth.tenantId, auth.clientId and auth.apiScope.');
+    }
+    this.auth = {
+      tenantId: config.auth.tenantId,
+      clientId: config.auth.clientId,
+      apiScope: config.auth.apiScope,
+    };
   }
 }
