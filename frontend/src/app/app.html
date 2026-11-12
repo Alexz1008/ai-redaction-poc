@@ -1,0 +1,10 @@
+<main>
+  <p class="eyebrow">Angular + FastAPI + Azure</p>
+  <h1>AI Redaction</h1>
+  <p>Your application starter is ready. Add your redaction workflow here.</p>
+  <section aria-labelledby="backend-heading">
+    <h2 id="backend-heading">Backend connection</h2>
+    <p role="status">{{ status() }}</p>
+    <button type="button" (click)="checkHealth()" [disabled]="checking()">Check connection</button>
+  </section>
+</main>

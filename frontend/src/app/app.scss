@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  color: #17243b;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  max-width: 52rem;
+  margin: 5rem auto;
+  padding: 0 1.5rem;
+}
+
+.eyebrow {
+  color: #435bc2;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 7vw, 4rem);
+  margin: 1rem 0;
+}
+
+section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #d6deed;
+  border-radius: 0.75rem;
+}
+
+button {
+  background: #304cc4;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
