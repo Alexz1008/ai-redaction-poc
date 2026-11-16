@@ -13,14 +13,21 @@ No Azure provisioning or deployment automation is included.
 
 1. The user signs in with Microsoft Entra and uploads a PDF (English, up to 10 MB).
 2. The backend validates the access token and stores the original in a private container.
-3. The backend submits an asynchronous Azure Language document PII job. Azure Language
-   reads the original and writes the redacted PDF and analysis artifacts to a second
-   private container. The frontend polls progress through the backend.
-4. The backend verifies ownership before serving the redacted PDF as a download.
+3. The backend splits the PDF at page boundaries, targeting 90,000 estimated UTF-16
+   units per part, below Azure's 125,000 text-element document limit. Azure Language
+   redacts each part using its asynchronous native-document PII API. If Azure's
+   count exceeds the estimate (including OCR), the affected part is halved and
+   retried. A single oversized page fails explicitly.
+4. Status polling advances persisted part jobs sequentially. Once every part succeeds,
+   the backend merges only redacted pages in their original order, checks page counts,
+   and verifies ownership before serving one PDF. No original pages are substituted
+   on failure. Reassembly preserves pages, not necessarily bookmarks, forms, signatures,
+   or document-level navigation.
 
 The original must be uploaded **before** redaction because the native-document API
-requires Blob Storage source/target locations. The backend creates one-hour HTTPS
-SAS grants for Azure Language; neither SAS tokens nor service keys reach the browser.
+requires Blob Storage source/target locations. Managed identity is recommended.
+For key-based installations, the backend creates one-hour HTTPS SAS grants for Azure
+Language; neither SAS tokens nor service keys reach the browser.
 All available PII categories are requested with character masking and service logging
 opt-out. Review every result: automated detection can miss PII, and document warnings
 can indicate incomplete processing. This is not a guarantee of anonymization.
@@ -32,8 +39,8 @@ Create these resources manually:
 - A **single-service Azure Language resource** supporting native-document PII.
   The backend uses the GA `2026-05-01` analyze-documents API, not text extraction.
 - An Azure Storage account with two **private**, pre-created containers, for example
-  `originals` and `redacted`. Disable anonymous blob access. Shared-key access must
-  be enabled for this implementation's server-side SAS signing.
+  `originals` and `redacted`. Disable anonymous blob access. Shared-key access can
+  remain disabled when using managed identity.
 - Two single-tenant Microsoft Entra application registrations, as described below.
 
 Set these in the backend App Service's **Settings > Environment variables / App settings**:
@@ -43,22 +50,36 @@ Set these in the backend App Service's **Settings > Environment variables / App 
 | `ENTRA_TENANT_ID` | Directory tenant ID |
 | `ENTRA_API_CLIENT_ID` | Backend/API registration's Application (client) ID |
 | `AZURE_LANGUAGE_ENDPOINT` | Language resource HTTPS endpoint, without an API path |
-| `AZURE_LANGUAGE_KEY` | Language resource key |
+| `AZURE_LANGUAGE_KEY` | Optional Language resource key; leave empty for managed identity |
 | `AZURE_STORAGE_ACCOUNT_NAME` | Storage account name |
-| `AZURE_STORAGE_ACCOUNT_KEY` | Storage account access key |
+| `AZURE_STORAGE_ACCOUNT_KEY` | Optional storage access key; leave empty for managed identity |
 | `AZURE_STORAGE_ORIGINALS_CONTAINER` | Original container name, e.g. `originals` |
 | `AZURE_STORAGE_REDACTED_CONTAINER` | Different output container name, e.g. `redacted` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins, e.g. `https://your-frontend-host` |
 
-Use Key Vault references for secret app settings where possible. No secrets belong
+For managed identity, leave **both** keys empty. Enable system-assigned identities on
+the backend App Service and the regional Language resource. Grant the backend
+**Storage Blob Data Contributor** on the two containers and **Cognitive Services User**
+on the Language resource. Grant the Language identity **Storage Blob Data Contributor**
+on both containers. Configure storage network access for both services separately;
+RBAC does not bypass firewalls. Local development uses `DefaultAzureCredential`,
+including your `az login` identity, which needs the backend's roles.
+
+Alternatively, supply both keys and enable storage shared-key access for SAS signing.
+Mixed key/identity configuration is rejected. Use Key Vault references for secret
+app settings where possible. No secrets belong
 in Angular configuration. Storage firewalls must permit both the backend and Language
 service to access storage; SAS does not bypass network restrictions. This configuration
 targets Azure public cloud. Resources, retention, quotas, and service charges remain
 the administrator's responsibility.
 
-Originals, output documents, analysis JSON (which can contain detected PII), and job
-records are retained; there is no automatic deletion or cleanup of failed submissions.
-Configure storage lifecycle rules and appropriate retention policies before real use.
+After a terminal result is persisted, temporary source parts and per-part output
+artifacts (including analysis JSON, which can contain PII) are deleted. Cleanup is
+idempotent and retried on subsequent status requests if interrupted. Originals,
+merged outputs, and job records are retained. Abandoned jobs and submissions that
+fail before a record is written require storage lifecycle rules; configure suitable
+retention on both containers before real use. Soft delete/versioning can retain
+deleted data according to the storage account's policies.
 Do not enable request-body or verbose Azure SDK logging for sensitive documents.
 
 ### Microsoft Entra registrations
@@ -155,7 +176,10 @@ Open `http://localhost:4200`. The development server proxies `/api/*` to
 Populate the Entra fields in `frontend/public/config.json` as shown above. Until
 configured, the UI shows a setup message and does not permit uploads. Keep the
 tab open during processing; this starter has no document history UI. Refreshing
-the page loses the current document selection but does not stop the Azure job.
+the page loses the current document selection. Existing Azure jobs continue, but
+submitting later parts, merging, and cleanup require further status requests.
+Progress survives backend restarts; status requests with the original document ID
+resume it. A short blob lease serializes status updates across backend instances.
 Keep `config.json` uncached when hosting; configure SPA route fallbacks in your host.
 
 ## Tests and build
@@ -183,8 +207,8 @@ API endpoints:
 - `GET /api/documents/{id}/download`: authenticated PDF attachment, only after success.
 
 Requests have a bounded multipart envelope and a hard 10,000,000-byte PDF limit.
-PDF headers/extensions are checked locally; Azure performs document parsing and may
-reject malformed, encrypted, or otherwise unsupported PDFs. Failed jobs never
+PDF headers/extensions, readability, and encryption are checked locally; Azure may
+still reject otherwise unsupported PDFs. Failed jobs never
 fall back to serving originals. If an Azure job expires before the app polls it,
 submit the document again; successful results already recorded by the backend
 remain downloadable while retained in storage.
