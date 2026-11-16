@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 export class ApiConfig {
   private readonly http = inject(HttpClient);
   apiBaseUrl = '/api';
+  devAuthBypass = false;
   auth = { tenantId: '', clientId: '', apiScope: '' };
 
   async load(): Promise<void> {
@@ -27,6 +28,21 @@ export class ApiConfig {
       }
     }
     this.apiBaseUrl = url;
+    if ('devAuthBypass' in config && typeof config.devAuthBypass !== 'boolean') {
+      throw new Error('devAuthBypass must be a boolean.');
+    }
+    if ('devAuthBypass' in config && config.devAuthBypass === true) {
+      const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (
+        !localHosts.has(location.hostname) ||
+        !localHosts.has(new URL(url, location.href).hostname)
+      ) {
+        throw new Error('Development authentication bypass requires a local frontend and API.');
+      }
+      this.devAuthBypass = true;
+      return;
+    }
+    this.devAuthBypass = false;
     if (
       !('auth' in config) ||
       typeof config.auth !== 'object' ||

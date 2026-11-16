@@ -1,8 +1,8 @@
 {
-  "apiBaseUrl": "/api",
+  "apiBaseUrl": "https://alexz1008-airedaction-back-hacrdwguhwcre5b2.westus3-01.azurewebsites.net/api",
   "auth": {
-    "tenantId": "",
-    "clientId": "",
-    "apiScope": ""
+    "tenantId": "16b3c013-d300-468d-ac64-7eda0820b6d3",
+    "clientId": "050db9cc-2989-474b-84fe-28ae4bede9a3",
+    "apiScope": "api://c4da3933-8051-44cf-97a8-63bf19a50090/access_as_user"
   }
 }

@@ -5,13 +5,20 @@
 
   @if (!auth.configured()) {
     <p role="status">Configure Entra sign-in in the frontend's config.json to get started.</p>
-  } @else if (!auth.account()) {
+  } @else if (!auth.account() && !auth.devBypass()) {
     <button type="button" (click)="signIn()">Sign in with Microsoft</button>
   } @else {
-    <div class="account">
-      <span>Signed in as {{ auth.account()?.username }}</span>
-      <button type="button" (click)="signOut()">Sign out</button>
-    </div>
+    @if (auth.devBypass()) {
+      <p role="alert">
+        Local development: authentication is disabled. All local users share document ownership.
+        Use isolated development storage and synthetic PDFs only.
+      </p>
+    } @else {
+      <div class="account">
+        <span>Signed in as {{ auth.account()?.username }}</span>
+        <button type="button" (click)="signOut()">Sign out</button>
+      </div>
+    }
     <section aria-labelledby="upload-heading">
       <h2 id="upload-heading">Redact a PDF</h2>
       <p>

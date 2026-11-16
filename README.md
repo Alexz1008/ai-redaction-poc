@@ -182,6 +182,35 @@ Progress survives backend restarts; status requests with the original document I
 resume it. A short blob lease serializes status updates across backend instances.
 Keep `config.json` uncached when hosting; configure SPA route fallbacks in your host.
 
+### Local development without Entra sign-in
+
+Authentication remains required by default. To bypass user sign-in locally:
+
+1. Set `DEV_AUTH_BYPASS=true` in `backend/.env` and restart the backend, keeping
+   Uvicorn bound to `127.0.0.1` as shown above.
+2. Temporarily replace your local `frontend/public/config.json` with:
+
+   ```json
+   {
+     "apiBaseUrl": "/api",
+     "devAuthBypass": true
+   }
+   ```
+
+3. Run `npm start` in `frontend` and open `http://localhost:4200`.
+
+The UI displays an authentication-disabled warning and sends no bearer token.
+The backend permits bypass only for loopback peers, loopback request hosts, and
+loopback browser origins (when present), and rejects it on Azure App Service.
+Do not expose or tunnel these local servers. All bypass users share one fixed
+development document identity; use isolated development storage and synthetic PDFs.
+Azure Storage and Language access still require the configured credentials or
+your Azure CLI identity and appropriate roles.
+
+Do not deploy or commit the bypass configuration. To restore normal authentication,
+set `DEV_AUTH_BYPASS=false` (or remove it), restore the frontend's Entra configuration,
+and restart the backend and reload the frontend.
+
 ## Tests and build
 
 From the project root:

@@ -13,8 +13,14 @@ export class Auth {
   private client: PublicClientApplication | undefined;
   readonly account = signal<AccountInfo | null>(null);
   readonly configured = signal(false);
+  readonly devBypass = signal(false);
 
   async initialize(): Promise<void> {
+    if (this.config.devAuthBypass) {
+      this.devBypass.set(true);
+      this.configured.set(true);
+      return;
+    }
     const { tenantId, clientId, apiScope } = this.config.auth;
     if (!tenantId || !clientId || !apiScope) {
       return;
@@ -51,6 +57,9 @@ export class Auth {
   }
 
   async headers(): Promise<HttpHeaders> {
+    if (this.devBypass()) {
+      return new HttpHeaders();
+    }
     const account = this.account();
     if (!this.client || !account) {
       throw new Error('Sign in before uploading or downloading documents.');

@@ -3,10 +3,11 @@ import logging
 import os
 from dataclasses import dataclass
 from functools import lru_cache
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from jwt.exceptions import (
@@ -82,8 +83,30 @@ def get_token_verifier() -> TokenVerifier:
 
 
 def current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> User:
+    bypass = os.environ.get("DEV_AUTH_BYPASS", "false").lower()
+    if bypass not in {"true", "false"}:
+        logger.error("DEV_AUTH_BYPASS must be true or false.")
+        raise HTTPException(503, "DEV_AUTH_BYPASS must be true or false.")
+    if bypass == "true":
+        local_hosts = {"localhost", "127.0.0.1", "::1"}
+        try:
+            origin = urlsplit(request.headers.get("origin", "")).hostname
+        except ValueError:
+            raise HTTPException(403, "Invalid origin for local development.") from None
+        if (
+            os.environ.get("WEBSITE_SITE_NAME")
+            or request.client is None
+            or request.client.host not in {"127.0.0.1", "::1"}
+            or request.url.hostname not in local_hosts
+            or ("origin" in request.headers and origin not in local_hosts)
+        ):
+            logger.warning("Rejected a non-local development authentication bypass request.")
+            raise HTTPException(403, "Development authentication bypass is local-only.")
+        logger.warning("Authentication bypass active: using the shared local development user.")
+        return User("local-development", "shared-user")
     if credentials is None:
         raise HTTPException(
             401, "Sign-in is required.", headers={"WWW-Authenticate": "Bearer"}

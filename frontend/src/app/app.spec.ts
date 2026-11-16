@@ -20,6 +20,7 @@ describe('PDF redaction workflow', () => {
   const auth = {
     account: signal<AccountInfo | null>(account),
     configured: signal(true),
+    devBypass: signal(false),
     headers: vi.fn(async () => new HttpHeaders({ Authorization: 'Bearer access-token' })),
     signIn: vi.fn(async () => {}),
     signOut: vi.fn(async () => {}),
@@ -29,6 +30,7 @@ describe('PDF redaction workflow', () => {
     vi.useFakeTimers();
     auth.account.set(account);
     auth.configured.set(true);
+    auth.devBypass.set(false);
     auth.headers.mockClear();
     TestBed.configureTestingModule({
       imports: [App],
@@ -76,6 +78,17 @@ describe('PDF redaction workflow', () => {
     expect(fixture.nativeElement.querySelector('input')).toBeNull();
     expect(button('Sign in with Microsoft')).toBeDefined();
     http.expectNone('https://backend.example/api/documents');
+  });
+
+  it('offers uploads without sign-in and warns about shared ownership in local dev mode', () => {
+    auth.account.set(null);
+    auth.devBypass.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'All local users share document ownership',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Sign out');
   });
 
   it('uploads with an access token, polls completion, and downloads the redacted PDF', async () => {

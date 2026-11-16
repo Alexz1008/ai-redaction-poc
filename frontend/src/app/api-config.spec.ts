@@ -15,7 +15,36 @@ describe('ApiConfig', () => {
     config = TestBed.inject(ApiConfig);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    vi.unstubAllGlobals();
+  });
+
+  it('allows explicit bypass with a loopback frontend and the local API proxy', async () => {
+    vi.stubGlobal('location', new URL('http://localhost:4200'));
+    const loaded = config.load();
+    http.expectOne('/config.json').flush({ apiBaseUrl: '/api', devAuthBypass: true });
+    await loaded;
+    expect(config.devAuthBypass).toBe(true);
+  });
+
+  it.each([
+    ['https://frontend.example', '/api'],
+    ['http://localhost:4200', 'https://backend.example/api'],
+  ])('rejects bypass for a non-local frontend or API (%s, %s)', async (origin, apiBaseUrl) => {
+    vi.stubGlobal('location', new URL(origin));
+    const loaded = config.load();
+    const rejected = expect(loaded).rejects.toThrow('requires a local frontend and API');
+    http.expectOne('/config.json').flush({ apiBaseUrl, devAuthBypass: true });
+    await rejected;
+  });
+
+  it('rejects a string bypass flag instead of treating it as enabled', async () => {
+    const loaded = config.load();
+    const rejected = expect(loaded).rejects.toThrow('devAuthBypass must be a boolean');
+    http.expectOne('/config.json').flush({ apiBaseUrl: '/api', devAuthBypass: 'true' });
+    await rejected;
+  });
 
   it('loads the deployed API URL and removes a trailing slash', async () => {
     const loaded = config.load();

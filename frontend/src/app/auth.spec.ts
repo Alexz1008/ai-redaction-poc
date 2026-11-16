@@ -82,6 +82,16 @@ describe('Entra authentication', () => {
     expect(redirect).toHaveBeenCalledOnce();
   });
 
+  it('skips MSAL and sends no bearer token when local development bypass is enabled', async () => {
+    TestBed.inject(ApiConfig).devAuthBypass = true;
+    await auth.initialize();
+    expect(auth.configured()).toBe(true);
+    expect(auth.devBypass()).toBe(true);
+    expect(auth.account()).toBeNull();
+    expect(PublicClientApplication.prototype.initialize).not.toHaveBeenCalled();
+    expect((await auth.headers()).has('Authorization')).toBe(false);
+  });
+
   it('does not silently hide token acquisition failures', async () => {
     vi.spyOn(PublicClientApplication.prototype, 'acquireTokenSilent').mockRejectedValue(
       new Error('Token acquisition failed'),

@@ -6,9 +6,10 @@ from uuid import uuid4
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.testclient import TestClient
 
-from app.auth import TokenVerifier
+from app.auth import TokenVerifier, User, current_user
 
 
 @pytest.fixture
@@ -58,3 +59,59 @@ def test_invalid_signature_is_rejected(credentials):
     with pytest.raises(HTTPException) as error:
         verifier.verify(jwt.encode(claims, other_key, algorithm="RS256"))
     assert error.value.status_code == 401
+
+
+@pytest.fixture
+def local_auth_app(monkeypatch):
+    monkeypatch.delenv("DEV_AUTH_BYPASS", raising=False)
+    monkeypatch.delenv("WEBSITE_SITE_NAME", raising=False)
+    app = FastAPI()
+
+    @app.get("/user")
+    def user_identity(user: User = Depends(current_user)):
+        return {"prefix": user.storage_prefix}
+
+    return app
+
+
+def test_local_bypass_is_disabled_by_default(local_auth_app):
+    client = TestClient(local_auth_app, client=("127.0.0.1", 1234))
+    assert client.get("/user").status_code == 401
+
+
+@pytest.mark.parametrize("peer,base_url,origin", [
+    ("127.0.0.1", "http://localhost", "http://localhost:4200"),
+    ("::1", "http://[::1]", "http://[::1]:4200"),
+])
+def test_local_bypass_uses_a_stable_shared_identity(
+    local_auth_app, monkeypatch, peer, base_url, origin
+):
+    monkeypatch.setenv("DEV_AUTH_BYPASS", "true")
+    client = TestClient(local_auth_app, base_url=base_url, client=(peer, 1234))
+    response = client.get("/user", headers={"origin": origin})
+    assert response.status_code == 200
+    assert response.json() == {"prefix": User("local-development", "shared-user").storage_prefix}
+    assert client.get("/user").json() == response.json()
+
+
+@pytest.mark.parametrize("peer,base_url,origin,hosted", [
+    ("192.0.2.1", "http://localhost", "http://localhost:4200", False),
+    ("127.0.0.1", "https://public.example", "http://localhost:4200", False),
+    ("127.0.0.1", "http://localhost", "https://public.example", False),
+    ("127.0.0.1", "http://localhost", "null", False),
+    ("127.0.0.1", "http://localhost", "http://localhost:4200", True),
+])
+def test_local_bypass_rejects_non_local_use(
+    local_auth_app, monkeypatch, peer, base_url, origin, hosted
+):
+    monkeypatch.setenv("DEV_AUTH_BYPASS", "true")
+    if hosted:
+        monkeypatch.setenv("WEBSITE_SITE_NAME", "hosted-dev")
+    client = TestClient(local_auth_app, base_url=base_url, client=(peer, 1234))
+    assert client.get("/user", headers={"origin": origin}).status_code == 403
+
+
+def test_invalid_bypass_configuration_fails_explicitly(local_auth_app, monkeypatch):
+    monkeypatch.setenv("DEV_AUTH_BYPASS", "yes")
+    client = TestClient(local_auth_app, client=("127.0.0.1", 1234))
+    assert client.get("/user").status_code == 503
