@@ -53,6 +53,20 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "local": {
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": ["config.json"]
+                },
+                {
+                  "glob": "config.json",
+                  "input": ".local",
+                  "output": "/"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -65,6 +79,9 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "local": {
+              "buildTarget": "frontend:build:development,local"
             }
           },
           "defaultConfiguration": "development"

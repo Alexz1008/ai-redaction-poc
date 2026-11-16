@@ -188,7 +188,7 @@ Authentication remains required by default. To bypass user sign-in locally:
 
 1. Set `DEV_AUTH_BYPASS=true` in `backend/.env` and restart the backend, keeping
    Uvicorn bound to `127.0.0.1` as shown above.
-2. Temporarily replace your local `frontend/public/config.json` with:
+2. Create `frontend/.local/config.json` (Git-ignored) with:
 
    ```json
    {
@@ -197,7 +197,10 @@ Authentication remains required by default. To bypass user sign-in locally:
    }
    ```
 
-3. Run `npm start` in `frontend` and open `http://localhost:4200`.
+3. Run `npm run start:local` in `frontend` and open `http://localhost:4200`.
+   This explicit local configuration serves the ignored file as `/config.json`.
+   Normal `npm start` and production builds use the tracked
+   `frontend/public/config.json`, which must keep authentication enabled.
 
 The UI displays an authentication-disabled warning and sends no bearer token.
 The backend permits bypass only for loopback peers, loopback request hosts, and
@@ -207,9 +210,9 @@ development document identity; use isolated development storage and synthetic PD
 Azure Storage and Language access still require the configured credentials or
 your Azure CLI identity and appropriate roles.
 
-Do not deploy or commit the bypass configuration. To restore normal authentication,
-set `DEV_AUTH_BYPASS=false` (or remove it), restore the frontend's Entra configuration,
-and restart the backend and reload the frontend.
+Both `backend/.env` and `frontend/.local/` are Git-ignored. Do not force-add or deploy
+these local files. To restore normal authentication, set `DEV_AUTH_BYPASS=false`
+(or remove it), restart the backend, and restart the frontend with `npm start`.
 
 ## Tests and build
 
