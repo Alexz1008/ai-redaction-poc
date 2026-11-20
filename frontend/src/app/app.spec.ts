@@ -121,9 +121,15 @@ describe('PDF redaction workflow', () => {
     await vi.advanceTimersByTimeAsync(2000);
     const poll = http.expectOne('https://backend.example/api/documents/document-1');
     expect(poll.request.headers.get('Authorization')).toBe('Bearer access-token');
-    poll.flush({ id: 'document-1', status: 'succeeded', message: null, warning_count: 1 });
+    poll.flush({
+      id: 'document-1',
+      status: 'succeeded',
+      message: 'Structural checks passed; independent redaction review is required.',
+      warning_count: 1,
+    });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('1 processing warning(s)');
+    expect(fixture.nativeElement.textContent).toContain('independent redaction review is required');
     button('Download redacted PDF').click();
     await Promise.resolve();
 

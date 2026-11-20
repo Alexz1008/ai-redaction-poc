@@ -1,0 +1,53 @@
+{
+  "status": "generated_unreviewed",
+  "source_agent": "sac-redaction",
+  "source_version": "2",
+  "model": "claude-opus-5-5",
+  "binding_sha256_verified": true,
+  "shared_agent_modified": false,
+  "generated": [
+    {
+      "file": "IIR - 2_Preview_1.png",
+      "bytes": 178197,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "IIR - 2_Preview_2.png",
+      "bytes": 223870,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "IIR - 2_Preview_3.png",
+      "bytes": 210023,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "IIR - 2_Preview_4.png",
+      "bytes": 242929,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "IIR - 2_Redacted.pdf",
+      "bytes": 696014,
+      "checks": {
+        "page_count": 34,
+        "text_changed": true,
+        "metadata_cleared": true,
+        "page_geometry_preserved": true,
+        "full_policy_verification": "not_performed_requires_independent_review"
+      }
+    }
+  ],
+  "download_method": "authenticated_job_container_listing",
+  "policy_status": "CONTENT_CHECKS_PASSED_LAYOUT_REVIEW_REQUIRED: not approved for disclosure.",
+  "cleanup_errors": [],
+  "independent_review_report": "independent-iir-verification.json"
+}

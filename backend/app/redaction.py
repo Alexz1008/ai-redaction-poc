@@ -21,7 +21,7 @@ from azure.storage.blob import (
     generate_blob_sas,
     generate_container_sas,
 )
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import PyPdfError
@@ -52,7 +52,7 @@ class Settings:
         return f"https://{self.account_name}.blob.core.windows.net"
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls, *, require_language: bool = True) -> "Settings":
         names = [
             "AZURE_LANGUAGE_ENDPOINT",
             "AZURE_LANGUAGE_KEY",
@@ -62,24 +62,26 @@ class Settings:
             "AZURE_STORAGE_REDACTED_CONTAINER",
         ]
         values = [os.environ.get(name, "").strip() for name in names]
-        required = [0, 2, 4, 5]
+        required = [0, 2, 4, 5] if require_language else [2, 4, 5]
         if any(not values[index] for index in required):
             logger.error("Missing Azure app settings: %s", ", ".join(
                 names[index] for index in required if not values[index]
             ))
             raise HTTPException(503, "Backend Azure settings are not configured.")
         endpoint, language_key, account, account_key, originals, redacted = values
-        if bool(language_key) != bool(account_key):
+        if require_language and bool(language_key) != bool(account_key):
             raise HTTPException(503, "Configure both Azure keys or use managed identity without keys.")
         url = urlsplit(endpoint)
         if (
-            url.scheme != "https"
-            or not url.hostname
-            or url.username
-            or url.password
-            or url.query
-            or url.fragment
-            or url.path.rstrip("/")
+            (require_language and (
+                url.scheme != "https"
+                or not url.hostname
+                or url.username
+                or url.password
+                or url.query
+                or url.fragment
+                or url.path.rstrip("/")
+            ))
             or not re.fullmatch(r"[a-z0-9]{3,24}", account)
             or originals == redacted
             or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{1,61})[a-z0-9]", c)
@@ -109,6 +111,7 @@ class Chunk(BaseModel):
 
 class Record(BaseModel):
     id: UUID
+    provider: Literal["language", "foundry"] = "language"
     language_job_id: UUID | None = None
     status: Literal["running", "succeeded", "failed"] = "running"
     redacted_blob: str | None = None
@@ -181,6 +184,8 @@ class RedactionService:
             raise RedactionError("Stored job record is invalid.") from None
         if record.id != document_id:
             raise RedactionError("Stored job identity is invalid.")
+        if record.provider != "language":
+            raise HTTPException(409, "This document requires the Foundry redaction backend.")
         if not record.chunks and record.language_job_id:
             record.chunks = [Chunk(
                 id=record.id, start=0, end=0, language_job_id=record.language_job_id
@@ -540,7 +545,20 @@ class RedactionService:
             raise HTTPException(404, "The redacted document is no longer available.") from None
 
 
-def get_redaction_service() -> Iterator[RedactionService]:
+def get_redaction_service(background_tasks: BackgroundTasks) -> Iterator[RedactionService]:
+    provider = os.environ.get("REDACTION_PROVIDER", "foundry").strip().lower()
+    if provider == "foundry":
+        from app.foundry import get_foundry_service
+
+        yield from get_foundry_service(background_tasks)
+    elif provider == "language":
+        yield from get_language_redaction_service()
+    else:
+        logger.error("Invalid REDACTION_PROVIDER app setting.")
+        raise HTTPException(503, "Configure REDACTION_PROVIDER as foundry or language.")
+
+
+def get_language_redaction_service() -> Iterator[RedactionService]:
     settings = Settings.from_env()
     with (
         DefaultAzureCredential() as credential,

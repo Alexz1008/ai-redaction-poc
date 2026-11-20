@@ -1,0 +1,60 @@
+{
+  "status": "generated_unreviewed",
+  "source_agent": "sac-redaction",
+  "source_version": "2",
+  "model": "claude-opus-5-5",
+  "binding_sha256_verified": true,
+  "shared_agent_modified": false,
+  "generated": [
+    {
+      "file": "Chronos - For Microsoft_Preview_1.png",
+      "bytes": 213053,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "Chronos - For Microsoft_Preview_2.png",
+      "bytes": 211733,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "Chronos - For Microsoft_Preview_3.png",
+      "bytes": 213958,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "Chronos - For Microsoft_Preview_4.png",
+      "bytes": 208343,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "Chronos - For Microsoft_Preview_5.png",
+      "bytes": 198084,
+      "checks": {
+        "png_signature_valid": true
+      }
+    },
+    {
+      "file": "Chronos - For Microsoft_Redacted.pdf",
+      "bytes": 1037668,
+      "checks": {
+        "page_count": 77,
+        "text_changed": true,
+        "metadata_cleared": true,
+        "page_geometry_preserved": true,
+        "full_policy_verification": "not_performed_requires_independent_review"
+      }
+    }
+  ],
+  "download_method": "authenticated_job_container_listing",
+  "policy_status": "NOT_APPROVED: name-like references remain on pages 22 and 67; additional boundary differences require review.",
+  "cleanup_errors": [],
+  "independent_review_report": "independent-comparison.json"
+}

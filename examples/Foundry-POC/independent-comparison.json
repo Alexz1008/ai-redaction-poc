@@ -1,0 +1,28 @@
+{
+  "original_pages": 77,
+  "generated_pages": 77,
+  "baseline_redacted_characters_still_present": 16,
+  "pages_with_baseline_redacted_characters_remaining": {
+    "22": 9,
+    "32": 1,
+    "67": 5,
+    "69": 1
+  },
+  "additional_removed_characters_relative_to_baseline": 7,
+  "pages_with_additional_removed_characters": {
+    "22": 2,
+    "73": 4,
+    "76": 1
+  },
+  "pages_with_visual_changes_outside_comments": [],
+  "pages_with_changed_image_bytes": [],
+  "metadata_cleared": true,
+  "remaining_baseline_redacted_letters": 14,
+  "remaining_baseline_redacted_punctuation": 2,
+  "protected_name_count_changes": [],
+  "policy_status": "NOT_APPROVED: name-like references remain on pages 22 and 67; additional boundary differences require review.",
+  "dob_label_page_73_before_after": [
+    1,
+    0
+  ]
+}

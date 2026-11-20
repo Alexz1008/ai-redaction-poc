@@ -1,7 +1,7 @@
 <main>
   <p class="eyebrow">Angular + FastAPI + Azure</p>
   <h1>PDF PII Redaction</h1>
-  <p>Upload a PDF, redact personal information with Azure Language, and download the result.</p>
+  <p>Upload a PDF, redact personal information with Azure AI, and download the result.</p>
 
   @if (!auth.configured()) {
     <p role="status">Configure Entra sign-in in the frontend's config.json to get started.</p>
@@ -52,9 +52,12 @@
             }
             @case ('succeeded') {
               <p>Your redacted PDF is ready.</p>
+              @if (currentJob.message) {
+                <p>{{ currentJob.message }}</p>
+              }
               @if (currentJob.warning_count > 0) {
                 <p>
-                  Azure reported {{ currentJob.warning_count }} processing warning(s). Review the
+                  There are {{ currentJob.warning_count }} processing warning(s). Review the
                   output carefully.
                 </p>
               }
