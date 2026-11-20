@@ -84,6 +84,23 @@ Only if replacing those tools is intended, rerun with `--replace-tools`; the cha
 applies to the new version, not previous versions.
 Each job pins the configured agent version selected when processing starts.
 
+For Azure Cloud Shell, select **PowerShell** and upload only
+[`scripts/Configure-FoundryAgent.ps1`](scripts/Configure-FoundryAgent.ps1).
+It requires PowerShell 7 and Azure CLI, but no repository checkout or Python dependencies.
+Select the customer's subscription and run it from the upload directory:
+
+```powershell
+az account set --subscription "<customer-subscription-id>"
+.\Configure-FoundryAgent.ps1 `
+  -ProjectEndpoint "https://<resource>.services.ai.azure.com/api/projects/<project>" `
+  -AgentName "<customer-existing-agent-name>"
+```
+
+The script performs the same existing-agent binding setup described above.
+Use `-ReplaceTools` only if replacing existing non-native tools is intended.
+Cloud Shell must be signed into the customer's tenant with permission to read the
+agent and create a version. No PDFs or secrets need to be uploaded for setup.
+
 Set `AZURE_FOUNDRY_EXECUTION_MODE=native` (default) and
 `AZURE_FOUNDRY_AGENT_NAME=<customer-existing-agent-name>`, then restart the backend.
 The local example uses `sac-redaction`. No second retained agent is required.
